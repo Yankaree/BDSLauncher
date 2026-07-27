@@ -1,13 +1,19 @@
 package me.ngcsonsplash.bdslauncher.service;
 
 import me.ngcsonsplash.bdslauncher.model.InstallState;
-import me.ngcsonsplash.bdslauncher.util.CurlDownload;
 import me.ngcsonsplash.bdslauncher.util.Printer;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import java.io.InputStream;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.time.Duration;
 
 public class McxboxBroadcastManager {
 
@@ -16,9 +22,14 @@ public class McxboxBroadcastManager {
     private static final Path MCXBOX_JAR = MCXBOX_DIR.resolve("MCXboxBroadcast.jar");
     private static final Path MCXBOX_CONFIG = MCXBOX_DIR.resolve("config");
 
+    private final HttpClient httpClient;
     private final ObjectMapper mapper;
 
     public McxboxBroadcastManager() {
+        this.httpClient = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(30))
+                .followRedirects(HttpClient.Redirect.NORMAL)
+                .build();
         this.mapper = new ObjectMapper();
     }
 
@@ -53,7 +64,7 @@ public class McxboxBroadcastManager {
             }
 
             Printer.printInfo("Downloading", downloadUrl);
-            CurlDownload.download(downloadUrl, MCXBOX_JAR);
+            downloadFile(downloadUrl, MCXBOX_JAR);
 
             long jarSize = Files.size(MCXBOX_JAR);
             if (jarSize < 1000) {
@@ -69,8 +80,15 @@ public class McxboxBroadcastManager {
     }
 
     private String getLatestReleaseUrl() throws Exception {
-        String json = CurlDownload.fetch(MCXBOX_API, "Accept", "application/vnd.github+json");
-        JsonNode root = mapper.readTree(json);
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(MCXBOX_API))
+                .header("Accept", "application/vnd.github+json")
+                .header("User-Agent", "BDSLauncher/1.0")
+                .GET()
+                .build();
+
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        JsonNode root = mapper.readTree(response.body());
 
         JsonNode assets = root.get("assets");
         if (assets == null || !assets.isArray()) return null;
@@ -87,5 +105,23 @@ public class McxboxBroadcastManager {
         }
 
         return fallback;
+    }
+
+    private void downloadFile(String url, Path target) throws Exception {
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .header("User-Agent", "BDSLauncher/1.0")
+                .GET()
+                .build();
+
+        HttpResponse<InputStream> response = httpClient.send(request, HttpResponse.BodyHandlers.ofInputStream());
+
+        if (response.statusCode() != 200) {
+            throw new RuntimeException("HTTP " + response.statusCode() + " downloading " + url);
+        }
+
+        try (InputStream in = response.body()) {
+            Files.copy(in, target, StandardCopyOption.REPLACE_EXISTING);
+        }
     }
 }
