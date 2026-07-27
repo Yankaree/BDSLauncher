@@ -1,0 +1,29 @@
+# Build output
+target/
+dependency-reduced-pom.xml
+
+# JAR/ZIP files (built artifacts)
+*.jar
+*.zip
+!pom.xml
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.settings/
+.classpath
+.project
+*.swp
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Runtime data (user-specific)
+data/
+logs/
+
+# Tools
+.tools/

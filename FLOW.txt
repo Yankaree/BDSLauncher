@@ -1,0 +1,98 @@
+BDSLauncher - Application Flow
+================================
+
+Main.main()
+│
+├─ 1. Printer.printBanner()
+│     In banner "BDS Launcher v1.0.0"
+│
+├─ 2. EnvironmentCheck.check()
+│     Kiểm tra 4 thứ:
+│     ├─ Java 21+
+│     ├─ Linux OS
+│     ├─ Architecture (amd64/x86_64/aarch64)
+│     └─ Disk space > 500MB
+│     → Nếu fail → exit(1)
+│
+├─ 3. InstallStateManager.load()
+│     Đọc data/install.json
+│     → Nếu chưa có → tạo file mặc định
+│     → Nếu lỗi parse → tạo lại từ đầu
+│
+├─ 4. InstallStateManager.validate()
+│     Kiểm tra:
+│     ├─ BDS marked installed nhưng file bedrock_server không tồn tại → reset
+│     └─ MCXboxBroadcast marked installed nhưng JAR không tồn tại → reset
+│
+├─ 5. TailscaleManager.setup()
+│     Nếu tailscale.enabled = false → skip
+│     Nếu tailscale.enabled = true:
+│     ├─ isVersionChanged()
+│     │   So sánh tailscale.version trong config vs data/tailscale/version.txt
+│     │   Nếu khác → cleanInstall() → xóa logged_in.flag + binaries + version.txt
+│     │
+│     ├─ checkInstalled(expectedVersion)
+│     │   ├─ Nếu có binaries + version đúng → skip
+│     │   └─ Nếu chưa có hoặc sai version → download tailscale từ pkgs.tailscale.com
+│     │      Extract vào data/tailscale/
+│     │      Lưu version vào data/tailscale/version.txt
+│     │
+│     ├─ startDaemon()
+│     │   Chạy: tailscaled --tun=userspace-networking
+│     │     --state=data/tailscale/tailscale.state
+│     │     --socket=data/tailscale/tailscale.sock
+│     │   Log → data/logs/tailscaled.log (không in ra console)
+│     │   Đợi socket xuất hiện (tối đa 15s)
+│     │
+│     ├─ Kiểm tra data/tailscale/logged_in.flag
+│     │   ├─ Nếu chưa có → firstLogin()
+│     │   │   ├─ Nếu có authKey → tailscale up --auth-key=...
+│     │   │   └─ Nếu không → tailscale up (interactive)
+│     │   │   Tạo logged_in.flag
+│     │   └─ Nếu đã có → skip login
+│     │
+│     └─ verifyStatus()
+│         Chạy: tailscale status
+│         Nếu fail → báo lỗi, không tự login lại
+│
+├─ 6. McxboxBroadcastManager.setup()
+│     ├─ Nếu đã có JAR → skip
+│     └─ Nếu chưa có → tải MCXboxBroadcastStandalone.jar từ GitHub
+│        Lưu vào data/mcxboxbroadcast/MCXboxBroadcast.jar
+│
+├─ 7. Nếu BDS chưa cài → BdsDownloadManager.installFirstTime()
+│     ├─ Fetch danh sách versions từ GitHub
+│     ├─ User chọn version (1-20)
+│     ├─ Download zip bedrock-server-<version>.zip
+│     ├─ Extract vào data/bds/
+│     ├─ chmod +x bedrock_server
+│     └─ Lưu version vào install.json
+│
+├─ 8. UpdateManager.checkAndUpdate()
+│     ├─ Nếu BDS chưa cài → skip
+│     ├─ Fetch version mới nhất từ GitHub
+│     ├─ So sánh với version hiện tại
+│     ├─ Nếu giống → "No update available"
+│     └─ Nếu khác:
+│        ├─ autoUpdate = true → tự download
+│        └─ autoUpdate = false → hỏi user "Update now? (Y/N)"
+│
+├─ 9. Tạo shutdown hook
+│     Khi JVM tắt → theo thứ tự:
+│     ├─ 1. stopBds()          → stop Minecraft
+│     ├─ 2. stopMcxbox()       → stop MCXboxBroadcast
+│     ├─ 3. tailscaleManager.stop() → stop tailscaled
+│     └─ 4. Exit launcher
+│
+├─ 10. ProcessManager.startMcxboxBroadcast()
+│     Chạy: java -jar MCXboxBroadcast.jar
+│     Thư mục: data/mcxboxbroadcast/
+│     Đọc stdout/stderr từ 2 virtual threads
+│     Sleep 2s chờ process khởi động
+│
+└─ 11. ProcessManager.startBds()
+      Chạy: ./bedrock_server
+      Thư mục: data/bds/
+      inheritIO() → nhập/xuất trực tiếp terminal
+      waitFor() → block cho đến khi BDS tắt
+      → Khi BDS tắt → in exit code → kết thúc chương trình

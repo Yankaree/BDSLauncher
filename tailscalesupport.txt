@@ -1,0 +1,313 @@
+Add Tailscale support to the existing BDSLauncher project.
+
+Important:
+- Existing launcher features are already implemented.
+- Do not rewrite existing systems.
+- Only add Tailscale integration.
+
+
+==================================================
+Goal
+==================================================
+
+Add optional Tailscale support.
+
+Tailscale is used for private networking in a Linux/Pterodactyl environment.
+
+Requirements:
+
+- Linux only
+- No root permission
+- Userspace networking mode
+- Run inside launcher process lifecycle
+
+
+==================================================
+Tailscale Directory
+==================================================
+
+Create:
+
+
+data/tailscale/
+
+
+Structure:
+
+
+data/tailscale/
+
+ ├── tailscaled
+
+ ├── tailscale
+
+ ├── tailscale.state
+
+ ├── tailscale.sock
+
+ └── logged_in.flag
+
+
+==================================================
+First Setup Flow
+==================================================
+
+When Tailscale is enabled:
+
+
+Check:
+
+
+data/tailscale/logged_in.flag
+
+
+If the file does not exist:
+
+
+This means Tailscale has never been authenticated.
+
+
+Perform first-time setup:
+
+
+1. Download Tailscale binaries if missing.
+
+2. Start tailscaled.
+
+
+Run:
+
+
+tailscaled
+--tun=userspace-networking
+--state=data/tailscale/tailscale.state
+--socket=data/tailscale/tailscale.sock
+
+
+3. Authenticate once.
+
+
+Using:
+
+
+tailscale up
+--auth-key=<AUTH_KEY>
+--socket=data/tailscale/tailscale.sock
+
+
+or interactive login if auth key is unavailable.
+
+
+4. Wait until login succeeds.
+
+
+5. Create:
+
+
+data/tailscale/logged_in.flag
+
+
+Example content:
+
+
+logged_in=true
+
+
+6. Continue normal launcher startup.
+
+
+==================================================
+Normal Startup After Login
+==================================================
+
+If:
+
+
+data/tailscale/logged_in.flag
+
+
+exists:
+
+
+Do not perform login again.
+
+
+Flow:
+
+
+1. Start tailscaled.
+
+2. Use existing:
+
+
+data/tailscale/tailscale.state
+
+
+3. Wait for socket.
+
+4. Check status.
+
+5. Continue startup.
+
+
+No auth key usage.
+
+No login prompt.
+
+
+==================================================
+Status Verification
+==================================================
+
+Even if logged_in.flag exists:
+
+
+Verify Tailscale is actually running.
+
+
+Check:
+
+
+tailscale status
+
+
+If status is valid:
+
+
+Continue.
+
+
+If status fails:
+
+
+Report error.
+
+
+Do not automatically login again unless explicitly configured.
+
+
+==================================================
+Logging
+==================================================
+
+Do not print tailscaled logs to Pterodactyl console.
+
+
+Redirect:
+
+
+tailscaled stdout
+
+tailscaled stderr
+
+
+to:
+
+
+data/logs/tailscaled.log
+
+
+==================================================
+Shutdown
+==================================================
+
+Integrate into existing process manager.
+
+
+Shutdown order:
+
+
+1. Stop Minecraft server.
+
+2. Stop MCXboxBroadcast.
+
+3. Stop tailscaled.
+
+4. Exit launcher.
+
+
+==================================================
+Code Structure
+==================================================
+
+Create:
+
+
+TailscaleManager
+
+
+Functions:
+
+
+- checkInstalled()
+- install()
+- startDaemon()
+- firstLogin()
+- checkLoginState()
+- status()
+- stop()
+
+
+Reuse existing:
+
+- ConfigManager
+- ProcessManager
+- Logger
+
+
+==================================================
+Configuration
+==================================================
+
+Add:
+
+
+{
+  "tailscale": {
+    "enabled": true,
+    "authKey": "optional",
+    "userspace": true
+  }
+}
+
+
+Rules:
+
+
+- If enabled=false, ignore Tailscale.
+- If logged_in.flag exists, never login again automatically.
+- If logged_in.flag is missing, perform first authentication.
+
+
+==================================================
+Final Behavior
+==================================================
+
+First run:
+
+
+Start launcher
+
+→ Install Tailscale
+
+→ Start tailscaled
+
+→ Login once
+
+→ Create logged_in.flag
+
+→ Start Minecraft
+
+
+Next runs:
+
+
+Start launcher
+
+→ Start tailscaled
+
+→ Detect logged_in.flag
+
+→ Skip login
+
+→ Start Minecraft

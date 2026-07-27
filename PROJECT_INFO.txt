@@ -1,0 +1,70 @@
+BDSLauncher - Project Summary (for agents)
+==========================================
+Last updated: 2026-07-21
+
+## Overview
+Linux Minecraft Bedrock Dedicated Server Launcher.
+Java 21, Maven build, Jackson + Commons Compress dependencies.
+Optional Tailscale support for private networking.
+
+## Directory Structure
+BDSLauncher/
+├─ pom.xml                    # Maven config, Java 21, shade plugin
+├─ src/main/java/com/bdslauncher/
+│  ├─ Main.java               # Entry point
+│  ├─ model/
+│  │  ├─ InstallState.java    # Trạng thái cài: bds info, mcxbox info, tailscale config, autoUpdate flag
+│  │  ├─ BdsMetadata.java     # Metadata từ GitHub: version, binary linux/windows url+sha256
+│  │  └─ VersionRegistry.java # Danh sách versions: release + preview
+│  ├─ service/
+│  │  ├─ EnvironmentCheck.java    # Check Java/Linux/Arch/Disk
+│  │  ├─ InstallStateManager.java # Đọc/ghi data/install.json
+│  │  ├─ BdsMetadataFetcher.java  # Fetch versions.json + metadata.json từ GitHub
+│  │  ├─ BdsDownloadManager.java  # Download + extract BDS zip
+│  │  ├─ McxboxBroadcastManager.java # Download MCXboxBroadcast jar từ GitHub
+│  │  ├─ UpdateManager.java       # Check update, hỏi user hoặc auto update
+│  │  ├─ ProcessManager.java      # Chạy BDS + MCXboxBroadcast processes
+│  │  └─ TailscaleManager.java    # Tailscale: download, daemon, login, status
+│  └─ util/
+│     └─ Printer.java         # In banner, status, read input
+├─ .tools/
+│  ├─ jdk-21.0.4/             # JDK for building
+│  └─ apache-maven-3.9.6/     # Maven for building
+├─ data/                      # Runtime data (created at runtime)
+│  ├─ install.json            # Trạng thái cài đặt
+│  ├─ cache/                  # Zip cache
+│  ├─ bds/                    # Bedrock Server files
+│  ├─ mcxboxbroadcast/        # MCXboxBroadcast jar + config
+│  ├─ tailscale/              # Tailscale binaries, state, socket, logged_in.flag
+│  └─ logs/                   # tailscaled.log
+
+## Key Files
+- data/install.json: { launcherVersion, autoUpdate, bds: {installed, version, platform, installedAt}, mcxboxbroadcast: {installed, version}, tailscale: {enabled, version, authKey, userspace}, lastUpdateCheck }
+- data/tailscale/version.txt: Tailscale version hiện tại đã cài
+
+## External APIs
+- https://raw.githubusercontent.com/EndstoneMC/bedrock-server-data/v2/versions.json
+- https://raw.githubusercontent.com/EndstoneMC/bedrock-server-data/v2/release/<version>/metadata.json
+- https://api.github.com/repos/MCXboxBroadcast/Broadcaster/releases/latest
+- https://pkgs.tailscale.com/stable/tailscale_${version}_amd64.tgz
+
+## Build Commands
+export JAVA_HOME=.tools/jdk-21.0.4
+export PATH="$JAVA_HOME/bin:.tools/apache-maven-3.9.6/bin:$PATH"
+mvn clean package -q
+
+## Output
+target/BDSLauncher-1.0.0.jar (fat jar via shade plugin)
+
+## Tailscale Update Workflow
+1. Sửa tailscale.version trong data/install.json
+2. Xóa data/tailscale/logged_in.flag (nếu muốn login lại)
+3. Chạy launcher → tự detect version mismatch → download lại → login lại
+
+## Known Issues (fixed)
+- Zip Slip vulnerability in BdsDownloadManager.extractZip() - FIXED: normalize + startsWith check
+- Duplicate shutdown hook in ProcessManager.startBds() - FIXED: removed inner hook
+- Hardcoded ./bedrock_server not using bdsBinary variable - FIXED
+- running AtomicBoolean set in wrong place - FIXED: only set in startBds()
+- Java version parsing edge case for versions without dot/dash - FIXED
+- MCXboxBroadcast download picks wrong jar (Extension instead of Standalone) - FIXED: prioritize MCXboxBroadcastStandalone.jar
