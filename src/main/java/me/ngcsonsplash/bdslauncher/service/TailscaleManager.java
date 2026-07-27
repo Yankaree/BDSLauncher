@@ -1,7 +1,7 @@
-package com.bdslauncher.service;
+package me.ngcsonsplash.bdslauncher.service;
 
-import com.bdslauncher.model.InstallState;
-import com.bdslauncher.util.Printer;
+import me.ngcsonsplash.bdslauncher.model.InstallState;
+import me.ngcsonsplash.bdslauncher.util.Printer;
 
 import java.io.BufferedReader;
 import java.io.InputStream;

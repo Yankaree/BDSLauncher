@@ -1,8 +1,8 @@
-package com.bdslauncher.service;
+package me.ngcsonsplash.bdslauncher.service;
 
-import com.bdslauncher.model.BdsMetadata;
-import com.bdslauncher.model.VersionRegistry;
-import com.bdslauncher.util.Printer;
+import me.ngcsonsplash.bdslauncher.model.BdsMetadata;
+import me.ngcsonsplash.bdslauncher.model.VersionRegistry;
+import me.ngcsonsplash.bdslauncher.util.Printer;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.net.URI;

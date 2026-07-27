@@ -1,8 +1,8 @@
-package com.bdslauncher.service;
+package me.ngcsonsplash.bdslauncher.service;
 
-import com.bdslauncher.model.BdsMetadata;
-import com.bdslauncher.model.InstallState;
-import com.bdslauncher.util.Printer;
+import me.ngcsonsplash.bdslauncher.model.BdsMetadata;
+import me.ngcsonsplash.bdslauncher.model.InstallState;
+import me.ngcsonsplash.bdslauncher.util.Printer;
 import org.apache.commons.compress.archivers.zip.ZipArchiveEntry;
 import org.apache.commons.compress.archivers.zip.ZipArchiveInputStream;
 

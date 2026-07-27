@@ -1,8 +1,8 @@
-package com.bdslauncher;
+package me.ngcsonsplash.bdslauncher;
 
-import com.bdslauncher.model.InstallState;
-import com.bdslauncher.service.*;
-import com.bdslauncher.util.Printer;
+import me.ngcsonsplash.bdslauncher.model.InstallState;
+import me.ngcsonsplash.bdslauncher.service.*;
+import me.ngcsonsplash.bdslauncher.util.Printer;
 
 public class Main {
 

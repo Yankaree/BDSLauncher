@@ -1,6 +1,6 @@
-package com.bdslauncher.service;
+package me.ngcsonsplash.bdslauncher.service;
 
-import com.bdslauncher.util.Printer;
+import me.ngcsonsplash.bdslauncher.util.Printer;
 
 import java.io.OutputStream;
 import java.nio.file.Path;

@@ -1,4 +1,4 @@
-package com.bdslauncher.util;
+package me.ngcsonsplash.bdslauncher.util;
 
 import java.util.Scanner;
 

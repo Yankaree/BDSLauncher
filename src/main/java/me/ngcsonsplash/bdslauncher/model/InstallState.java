@@ -1,4 +1,4 @@
-package com.bdslauncher.model;
+package me.ngcsonsplash.bdslauncher.model;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
