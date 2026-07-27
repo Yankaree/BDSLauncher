@@ -2,19 +2,15 @@ package me.ngcsonsplash.bdslauncher.service;
 
 import me.ngcsonsplash.bdslauncher.model.BdsMetadata;
 import me.ngcsonsplash.bdslauncher.model.InstallState;
+import me.ngcsonsplash.bdslauncher.util.CurlDownload;
 import me.ngcsonsplash.bdslauncher.util.Printer;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.compress.archivers.zip.ZipArchiveEntry;
 import org.apache.commons.compress.archivers.zip.ZipArchiveInputStream;
 
-import java.io.InputStream;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.time.Duration;
 import java.util.List;
 
 public class BdsDownloadManager {
@@ -22,15 +18,12 @@ public class BdsDownloadManager {
     private static final Path BDS_DIR = Path.of("data", "bds");
     private static final Path CACHE_DIR = Path.of("data", "cache");
 
-    private final HttpClient httpClient;
     private final BdsMetadataFetcher metadataFetcher;
+    private final ObjectMapper mapper;
 
     public BdsDownloadManager() {
-        this.httpClient = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(60))
-                .followRedirects(HttpClient.Redirect.NORMAL)
-                .build();
         this.metadataFetcher = new BdsMetadataFetcher();
+        this.mapper = new ObjectMapper();
     }
 
     public void installFirstTime(InstallState state) throws Exception {
@@ -83,7 +76,7 @@ public class BdsDownloadManager {
 
         Path zipFile = CACHE_DIR.resolve("bedrock-server-" + version + ".zip");
         Printer.printInfo("Downloading", "bedrock-server-" + version + ".zip");
-        downloadFile(downloadUrl, zipFile);
+        CurlDownload.download(downloadUrl, zipFile);
 
         Printer.printInfo("Extracting", "to data/bds/");
         extractZip(zipFile, BDS_DIR);
@@ -119,24 +112,6 @@ public class BdsDownloadManager {
 
     public String getLatestVersion() throws Exception {
         return metadataFetcher.getLatestVersion();
-    }
-
-    private void downloadFile(String url, Path target) throws Exception {
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(url))
-                .header("User-Agent", "BDSLauncher/1.0")
-                .GET()
-                .build();
-
-        HttpResponse<InputStream> response = httpClient.send(request, HttpResponse.BodyHandlers.ofInputStream());
-
-        if (response.statusCode() != 200) {
-            throw new RuntimeException("HTTP " + response.statusCode() + " downloading " + url);
-        }
-
-        try (InputStream in = response.body()) {
-            Files.copy(in, target, StandardCopyOption.REPLACE_EXISTING);
-        }
     }
 
     private void extractZip(Path zipFile, Path targetDir) throws Exception {

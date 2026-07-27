@@ -1,19 +1,14 @@
 package me.ngcsonsplash.bdslauncher.service;
 
 import me.ngcsonsplash.bdslauncher.model.InstallState;
+import me.ngcsonsplash.bdslauncher.util.CurlDownload;
 import me.ngcsonsplash.bdslauncher.util.Printer;
 
 import java.io.BufferedReader;
-import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 
 public class TailscaleManager {
@@ -31,14 +26,6 @@ public class TailscaleManager {
     private static final String TAILSCALE_DOWNLOAD_BASE = "https://pkgs.tailscale.com/stable/tailscale_${version}_amd64.tgz";
 
     private Process tailscaledProcess;
-    private final HttpClient httpClient;
-
-    public TailscaleManager() {
-        this.httpClient = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(30))
-                .followRedirects(HttpClient.Redirect.NORMAL)
-                .build();
-    }
 
     public void setup(InstallState state) throws Exception {
         Printer.printSection("Tailscale Setup");
@@ -113,7 +100,7 @@ public class TailscaleManager {
         String url = TAILSCALE_DOWNLOAD_BASE.replace("${version}", version);
         Path tgzFile = TAILSCALE_DIR.resolve("tailscale.tgz");
 
-        downloadFile(url, tgzFile);
+        CurlDownload.download(url, tgzFile);
         extractTgz(tgzFile, TAILSCALE_DIR);
         Files.deleteIfExists(tgzFile);
 
@@ -277,24 +264,6 @@ public class TailscaleManager {
             }
         } else {
             Printer.printInfo("Tailscale", "Not running");
-        }
-    }
-
-    private void downloadFile(String url, Path target) throws Exception {
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(url))
-                .header("User-Agent", "BDSLauncher/1.0")
-                .GET()
-                .build();
-
-        HttpResponse<InputStream> response = httpClient.send(request, HttpResponse.BodyHandlers.ofInputStream());
-
-        if (response.statusCode() != 200) {
-            throw new RuntimeException("HTTP " + response.statusCode() + " downloading " + url);
-        }
-
-        try (InputStream in = response.body()) {
-            Files.copy(in, target, StandardCopyOption.REPLACE_EXISTING);
         }
     }
 
