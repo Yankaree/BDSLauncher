@@ -1,17 +1,16 @@
 package me.ngcsonsplash.bdslauncher.service;
 
 import me.ngcsonsplash.bdslauncher.model.InstallState;
+import me.ngcsonsplash.bdslauncher.util.Json;
 import me.ngcsonsplash.bdslauncher.util.Printer;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Map;
 
 public class InstallStateManager {
 
     private static final Path INSTALL_FILE = Path.of("data", "install.json");
-    private static final ObjectMapper mapper = new ObjectMapper();
 
     public static InstallState load() {
         if (!Files.exists(INSTALL_FILE)) {
@@ -22,10 +21,16 @@ public class InstallStateManager {
         }
 
         try {
-            InstallState state = mapper.readValue(INSTALL_FILE.toFile(), InstallState.class);
-            Printer.printInfo("InstallState", "Loaded from install.json");
-            return state;
-        } catch (IOException e) {
+            Object parsed = Json.parseFile(INSTALL_FILE);
+            if (parsed instanceof Map<?, ?> map) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> typed = (Map<String, Object>) map;
+                InstallState state = InstallState.fromMap(typed);
+                Printer.printInfo("InstallState", "Loaded from install.json");
+                return state;
+            }
+            throw new RuntimeException("Invalid JSON structure");
+        } catch (Exception e) {
             Printer.printError("Failed to load install.json: " + e.getMessage());
             InstallState state = new InstallState();
             save(state);
@@ -36,8 +41,9 @@ public class InstallStateManager {
     public static void save(InstallState state) {
         try {
             Files.createDirectories(INSTALL_FILE.getParent());
-            mapper.writerWithDefaultPrettyPrinter().writeValue(INSTALL_FILE.toFile(), state);
-        } catch (IOException e) {
+            String json = Json.prettyPrint(state.toMap());
+            Files.writeString(INSTALL_FILE, json);
+        } catch (Exception e) {
             Printer.printError("Failed to save install.json: " + e.getMessage());
         }
     }

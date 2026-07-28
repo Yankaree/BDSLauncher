@@ -1,17 +1,13 @@
 package me.ngcsonsplash.bdslauncher.service;
 
+import me.ngcsonsplash.bdslauncher.util.Json;
 import me.ngcsonsplash.bdslauncher.util.Printer;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class WorldPackManager {
 
@@ -39,9 +35,7 @@ public class WorldPackManager {
 
     private boolean detectActiveWorld() {
         Path serverProperties = BDS_DIR.resolve("server.properties");
-        if (!Files.exists(serverProperties)) {
-            return false;
-        }
+        if (!Files.exists(serverProperties)) return false;
 
         try {
             String content = Files.readString(serverProperties);
@@ -53,9 +47,7 @@ public class WorldPackManager {
                 }
             }
 
-            if (activeWorld == null || activeWorld.isEmpty()) {
-                return false;
-            }
+            if (activeWorld == null || activeWorld.isEmpty()) return false;
 
             worldDir = WORLDS_DIR.resolve(activeWorld);
             return Files.exists(worldDir);
@@ -68,30 +60,21 @@ public class WorldPackManager {
 
     private void synchronizeBehaviorPacks() {
         Printer.printInfo("Scanning", "behavior_packs...");
-
         Path behaviorPacksDir = worldDir.resolve("behavior_packs");
         List<PackInfo> packs = scanPacks(behaviorPacksDir);
-
-        Path worldBehaviorPacksJson = worldDir.resolve("world_behavior_packs.json");
-        writePackJson(worldBehaviorPacksJson, packs);
+        writePackJson(worldDir.resolve("world_behavior_packs.json"), packs);
     }
 
     private void synchronizeResourcePacks() {
         Printer.printInfo("Scanning", "resource_packs...");
-
         Path resourcePacksDir = worldDir.resolve("resource_packs");
         List<PackInfo> packs = scanPacks(resourcePacksDir);
-
-        Path worldResourcePacksJson = worldDir.resolve("world_resource_packs.json");
-        writePackJson(worldResourcePacksJson, packs);
+        writePackJson(worldDir.resolve("world_resource_packs.json"), packs);
     }
 
     private List<PackInfo> scanPacks(Path packsDir) {
         List<PackInfo> packs = new ArrayList<>();
-
-        if (!Files.exists(packsDir) || !Files.isDirectory(packsDir)) {
-            return packs;
-        }
+        if (!Files.exists(packsDir) || !Files.isDirectory(packsDir)) return packs;
 
         Map<String, PackInfo> dedupMap = new LinkedHashMap<>();
 
@@ -129,43 +112,42 @@ public class WorldPackManager {
         return packs;
     }
 
+    @SuppressWarnings("unchecked")
     private PackInfo readManifest(Path manifestFile, String folderName) throws Exception {
-        ObjectMapper mapper = new ObjectMapper();
-        JsonNode root = mapper.readTree(manifestFile.toFile());
+        Map<String, Object> root = Json.asMap(Json.parseFile(manifestFile));
+        if (root == null) throw new RuntimeException("Invalid manifest.json");
 
-        JsonNode header = root.get("header");
-        if (header == null) {
-            throw new RuntimeException("Missing header in manifest.json");
-        }
+        Map<String, Object> header = Json.asMap(root.get("header"));
+        if (header == null) throw new RuntimeException("Missing header in manifest.json");
 
-        JsonNode uuidNode = header.get("uuid");
-        if (uuidNode == null || uuidNode.asText().isEmpty()) {
-            throw new RuntimeException("Missing or empty UUID in manifest.json");
-        }
-        String uuid = uuidNode.asText().trim();
+        String uuid = Json.asString(header.get("uuid"));
+        if (uuid == null || uuid.isEmpty()) throw new RuntimeException("Missing or empty UUID in manifest.json");
+        uuid = uuid.trim();
 
         if (!uuid.matches("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")) {
             throw new RuntimeException("Invalid UUID format: " + uuid);
         }
 
-        JsonNode versionNode = header.get("version");
-        if (versionNode == null || !versionNode.isArray() || versionNode.isEmpty()) {
+        List<Object> versionList = Json.asList(header.get("version"));
+        if (versionList == null || versionList.isEmpty()) {
             throw new RuntimeException("Missing or invalid version in manifest.json");
         }
 
-        int[] version = new int[versionNode.size()];
-        for (int i = 0; i < versionNode.size(); i++) {
-            version[i] = versionNode.get(i).asInt();
+        int[] version = new int[versionList.size()];
+        for (int i = 0; i < versionList.size(); i++) {
+            version[i] = Json.asInt(versionList.get(i));
         }
 
-        String name = header.has("name") ? header.get("name").asText() : folderName;
+        String name = header.containsKey("name") ? String.valueOf(header.get("name")) : folderName;
 
         List<ModuleInfo> modules = new ArrayList<>();
-        JsonNode modulesNode = root.get("modules");
-        if (modulesNode != null && modulesNode.isArray()) {
-            for (JsonNode moduleNode : modulesNode) {
-                String moduleType = moduleNode.has("type") ? moduleNode.get("type").asText() : "unknown";
-                String moduleUuid = moduleNode.has("uuid") ? moduleNode.get("uuid").asText() : "";
+        List<Object> modulesList = Json.asList(root.get("modules"));
+        if (modulesList != null) {
+            for (Object modObj : modulesList) {
+                Map<String, Object> mod = Json.asMap(modObj);
+                if (mod == null) continue;
+                String moduleType = (String) mod.getOrDefault("type", "unknown");
+                String moduleUuid = (String) mod.getOrDefault("uuid", "");
                 modules.add(new ModuleInfo(moduleType, moduleUuid));
             }
         }
@@ -183,25 +165,17 @@ public class WorldPackManager {
                 return;
             }
 
-            StringBuilder sb = new StringBuilder();
-            sb.append("[\n");
-            for (int i = 0; i < packs.size(); i++) {
-                PackInfo p = packs.get(i);
-                sb.append("  {\n");
-                sb.append("    \"pack_id\": \"").append(p.uuid).append("\",\n");
-                sb.append("    \"version\": [");
-                for (int j = 0; j < p.version.length; j++) {
-                    if (j > 0) sb.append(",");
-                    sb.append(p.version[j]);
-                }
-                sb.append("]\n");
-                sb.append("  }");
-                if (i < packs.size() - 1) sb.append(",");
-                sb.append("\n");
+            List<Map<String, Object>> entries = new ArrayList<>();
+            for (PackInfo p : packs) {
+                Map<String, Object> entry = new LinkedHashMap<>();
+                entry.put("pack_id", p.uuid);
+                List<Integer> ver = new ArrayList<>();
+                for (int v : p.version) ver.add(v);
+                entry.put("version", ver);
+                entries.add(entry);
             }
-            sb.append("]\n");
-            Files.writeString(jsonFile, sb.toString());
 
+            Files.writeString(jsonFile, Json.prettyPrint(entries) + "\n");
             Printer.printSuccess(jsonFile.getFileName().toString() + " updated (" + packs.size() + " packs)");
         } catch (IOException e) {
             Printer.printError("Failed to write " + jsonFile.getFileName() + ": " + e.getMessage());

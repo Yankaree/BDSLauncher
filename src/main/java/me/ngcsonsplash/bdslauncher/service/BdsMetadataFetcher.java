@@ -2,8 +2,8 @@ package me.ngcsonsplash.bdslauncher.service;
 
 import me.ngcsonsplash.bdslauncher.model.BdsMetadata;
 import me.ngcsonsplash.bdslauncher.model.VersionRegistry;
+import me.ngcsonsplash.bdslauncher.util.Json;
 import me.ngcsonsplash.bdslauncher.util.Printer;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -11,6 +11,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 
 public class BdsMetadataFetcher {
 
@@ -20,13 +21,11 @@ public class BdsMetadataFetcher {
             "https://raw.githubusercontent.com/EndstoneMC/bedrock-server-data/v2/release";
 
     private final HttpClient httpClient;
-    private final ObjectMapper mapper;
 
     public BdsMetadataFetcher() {
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(30))
                 .build();
-        this.mapper = new ObjectMapper();
     }
 
     public VersionRegistry fetchVersions() throws Exception {
@@ -37,7 +36,8 @@ public class BdsMetadataFetcher {
                 .build();
 
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-        return mapper.readValue(response.body(), VersionRegistry.class);
+        Object parsed = Json.parse(response.body());
+        return VersionRegistry.fromMap(Json.asMap(parsed));
     }
 
     public BdsMetadata fetchMetadata(String version) throws Exception {
@@ -49,16 +49,15 @@ public class BdsMetadataFetcher {
                 .build();
 
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-        return mapper.readValue(response.body(), BdsMetadata.class);
+        Object parsed = Json.parse(response.body());
+        return BdsMetadata.fromMap(Json.asMap(parsed));
     }
 
     public String getLatestVersion() throws Exception {
-        VersionRegistry registry = fetchVersions();
-        return registry.getRelease().getLatest();
+        return fetchVersions().getRelease().getLatest();
     }
 
     public List<String> getAvailableVersions() throws Exception {
-        VersionRegistry registry = fetchVersions();
-        return registry.getRelease().getVersions();
+        return fetchVersions().getRelease().getVersions();
     }
 }

@@ -1,9 +1,8 @@
 package me.ngcsonsplash.bdslauncher.service;
 
 import me.ngcsonsplash.bdslauncher.model.InstallState;
+import me.ngcsonsplash.bdslauncher.util.Json;
 import me.ngcsonsplash.bdslauncher.util.Printer;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.InputStream;
 import java.net.URI;
@@ -14,6 +13,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.time.Duration;
+import java.util.List;
+import java.util.Map;
 
 public class McxboxBroadcastManager {
 
@@ -23,14 +24,12 @@ public class McxboxBroadcastManager {
     private static final Path MCXBOX_CONFIG = MCXBOX_DIR.resolve("config");
 
     private final HttpClient httpClient;
-    private final ObjectMapper mapper;
 
     public McxboxBroadcastManager() {
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(30))
                 .followRedirects(HttpClient.Redirect.NORMAL)
                 .build();
-        this.mapper = new ObjectMapper();
     }
 
     public boolean isInstalled() {
@@ -88,23 +87,22 @@ public class McxboxBroadcastManager {
                 .build();
 
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-        JsonNode root = mapper.readTree(response.body());
+        Map<String, Object> root = Json.asMap(Json.parse(response.body()));
+        if (root == null) return null;
 
-        JsonNode assets = root.get("assets");
-        if (assets == null || !assets.isArray()) return null;
+        Object assetsObj = root.get("assets");
+        if (!(assetsObj instanceof List<?> assets)) return null;
 
         String fallback = null;
-        for (JsonNode asset : assets) {
-            JsonNode nameNode = asset.get("name");
-            JsonNode urlNode = asset.get("browser_download_url");
-            if (nameNode == null || urlNode == null) continue;
-            String name = nameNode.asText();
-            if (name.equals("MCXboxBroadcastStandalone.jar")) {
-                return urlNode.asText();
-            }
-            if (fallback == null && name.endsWith(".jar")) {
-                fallback = urlNode.asText();
-            }
+        for (Object item : assets) {
+            if (!(item instanceof Map<?, ?> asset)) continue;
+            @SuppressWarnings("unchecked")
+            Map<String, Object> a = (Map<String, Object>) asset;
+            String name = Json.asString(a.get("name"));
+            String url = Json.asString(a.get("browser_download_url"));
+            if (name == null || url == null) continue;
+            if (name.equals("MCXboxBroadcastStandalone.jar")) return url;
+            if (fallback == null && name.endsWith(".jar")) fallback = url;
         }
 
         return fallback;
