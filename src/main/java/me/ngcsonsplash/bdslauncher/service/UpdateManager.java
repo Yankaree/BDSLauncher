@@ -22,6 +22,12 @@ public class UpdateManager {
         }
 
         String currentVersion = state.getBds().getVersion();
+        if (currentVersion == null || currentVersion.isEmpty()) {
+            Printer.printWarning("BDS version unknown, reinstalling...");
+            downloadManager.updateToVersion(metadataFetcher.getLatestVersion(), state);
+            return;
+        }
+
         String latestVersion = metadataFetcher.getLatestVersion();
 
         state.setLastUpdateCheck(java.time.Instant.now().toString());

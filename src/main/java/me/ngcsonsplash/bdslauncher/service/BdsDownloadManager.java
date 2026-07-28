@@ -3,9 +3,6 @@ package me.ngcsonsplash.bdslauncher.service;
 import me.ngcsonsplash.bdslauncher.model.BdsMetadata;
 import me.ngcsonsplash.bdslauncher.model.InstallState;
 import me.ngcsonsplash.bdslauncher.util.Printer;
-import org.apache.commons.compress.archivers.zip.ZipArchiveEntry;
-import org.apache.commons.compress.archivers.zip.ZipArchiveInputStream;
-
 import java.io.InputStream;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -16,6 +13,8 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.time.Duration;
 import java.util.List;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 public class BdsDownloadManager {
 
@@ -100,6 +99,8 @@ public class BdsDownloadManager {
             throw new RuntimeException("BDS zip did not contain bedrock_server");
         }
 
+        Files.deleteIfExists(zipFile);
+
         Path versionFile = BDS_DIR.resolve("version.txt");
         Files.writeString(versionFile, version);
 
@@ -140,9 +141,9 @@ public class BdsDownloadManager {
     }
 
     private void extractZip(Path zipFile, Path targetDir) throws Exception {
-        try (ZipArchiveInputStream zis = new ZipArchiveInputStream(Files.newInputStream(zipFile))) {
-            ZipArchiveEntry entry;
-            while ((entry = zis.getNextZipEntry()) != null) {
+        try (ZipInputStream zis = new ZipInputStream(Files.newInputStream(zipFile))) {
+            ZipEntry entry;
+            while ((entry = zis.getNextEntry()) != null) {
                 Path entryPath = targetDir.resolve(entry.getName()).normalize();
 
                 if (!entryPath.startsWith(targetDir)) {
@@ -155,6 +156,7 @@ public class BdsDownloadManager {
                     Files.createDirectories(entryPath.getParent());
                     Files.copy(zis, entryPath, StandardCopyOption.REPLACE_EXISTING);
                 }
+                zis.closeEntry();
             }
         }
     }

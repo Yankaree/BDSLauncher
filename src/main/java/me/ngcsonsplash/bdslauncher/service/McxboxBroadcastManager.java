@@ -95,12 +95,15 @@ public class McxboxBroadcastManager {
 
         String fallback = null;
         for (JsonNode asset : assets) {
-            String name = asset.get("name").asText();
+            JsonNode nameNode = asset.get("name");
+            JsonNode urlNode = asset.get("browser_download_url");
+            if (nameNode == null || urlNode == null) continue;
+            String name = nameNode.asText();
             if (name.equals("MCXboxBroadcastStandalone.jar")) {
-                return asset.get("browser_download_url").asText();
+                return urlNode.asText();
             }
             if (fallback == null && name.endsWith(".jar")) {
-                fallback = asset.get("browser_download_url").asText();
+                fallback = urlNode.asText();
             }
         }
 

@@ -45,7 +45,7 @@ public class WorldPackManager {
 
         try {
             String content = Files.readString(serverProperties);
-            for (String line : content.split("\n")) {
+            for (String line : content.split("\\r?\\n")) {
                 line = line.trim();
                 if (line.startsWith("level-name=")) {
                     activeWorld = line.substring("level-name=".length()).trim();

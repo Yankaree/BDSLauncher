@@ -39,12 +39,13 @@ public class Main {
 
             boolean deleteMcxboxLog = state.getCleanup().isDeleteMCXboxBroadcastLog();
 
+            ConsoleInputManager consoleInputManager = new ConsoleInputManager();
+
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                consoleInputManager.detach();
                 processManager.shutdown(deleteMcxboxLog);
                 tailscaleManager.stop();
             }));
-
-            ConsoleInputManager consoleInputManager = new ConsoleInputManager();
 
             processManager.startMcxboxBroadcast();
             processManager.startBds(consoleInputManager);
