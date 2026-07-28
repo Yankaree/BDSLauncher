@@ -1,19 +1,23 @@
 # Changelog
 
-## [1.0.1] - 2026-07-28
+## [1.0.0] - 2026-07-28
 
-### Bug Fixes
-- **UpdateManager**: Fix NullPointerException when BDS version is null in install.json (now auto-reinstalls)
-- **ConsoleInputManager**: Fix virtual thread not being detached on shutdown, preventing stale I/O errors
-- **TailscaleManager**: Fix NullPointerException when Tailscale version is missing from config
-- **McxboxBroadcastManager**: Fix NullPointerException when GitHub API asset entries lack required fields
-- **BdsDownloadManager**: Fix zip cache files not being cleaned up after extraction
-- **WorldPackManager**: Fix `\r\n` line endings not being handled in server.properties parsing
+Initial release. Zero-dependency Minecraft Bedrock Dedicated Server launcher for Linux/Pterodactyl.
 
-### Config
-- **Migrated config from JSON to INI format**: Replaced `install.json` with `config.txt` — human-readable section-based key=value format
+### Features
+- Auto-install BDS with interactive version selection
+- Auto-update BDS when new versions available
+- MCXboxBroadcast integration for Xbox Live
+- Optional Tailscale VPN support (userspace networking)
+- World Pack Sync (auto-generate world_behavior_packs.json / world_resource_packs.json)
+- Console input forwarding to BDS stdin
+- Graceful shutdown: BDS `stop` → 30s wait → force kill; MCXbox/Tailscale force kill
+- Environment validation (Java 21+, Linux, amd64/aarch64, disk space)
 
-### Performance
-- **Dependency reduction**: Replaced `commons-compress` 1.26.2 (~1.5 MB) with built-in `java.util.zip`
-- **Zero external dependencies**: Removed Jackson databind 2.17.1 (~2.3 MB), replaced with custom lightweight `Json.java` parser
-- **JAR size**: 4.8 MB → **59 KB** (98.8% reduction), zero third-party dependencies
+### Technical
+- **Zero external dependencies** — JAR is 59 KB standalone
+- Custom `Json.java` recursive-descent parser for external JSON (GitHub API, manifest.json)
+- INI-style `data/config.txt` for configuration
+- `java.util.zip` for BDS zip extraction (no commons-compress)
+- Java 21 virtual threads for console input
+- No shade plugin, no transitive dependencies

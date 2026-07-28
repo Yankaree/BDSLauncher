@@ -1,38 +1,29 @@
 # BDSLauncher
 
-Java 21 launcher cho Minecraft Bedrock Dedicated Server trên Linux — thiết kế cho **Pterodactyl Panel** khi không có Minecraft Bedrock egg.
+Java 21 launcher cho Minecraft Bedrock Dedicated Server trên Linux — thiết kế cho **Pterodactyl Panel** (dùng Java egg thay vì Bedrock egg).
 
-[![Build](https://github.com/Yankaree/BDSLauncher/actions/workflows/build.yml/badge.svg)](https://github.com/Yankaree/BDSLauncher/actions/workflows/build.yml)
+## Cách dùng
 
-## Vấn đề
-
-Pterodactyl hỗ trợ Minecraft Java nhưng **không có egg cho Bedrock Dedicated Server**. BDSLauncher giải quyết vấn đề này — upload JAR, bấm Start, server chạy.
-
-## Cách dùng trên Pterodactyl
-
-1. Tạo server mới trên Pterodactyl (dùng egg Java / Spring Boot)
-2. Upload `BDSLauncher.jar` vào server
-3. Bấm **Start**
-
-Lần đầu BDSLauncher sẽ hỏi bạn chọn version BDS muốn cài. Từ lần sau server tự chạy, không cần làm gì thêm.
+1. Upload `BDSLauncher.jar` lên Pterodactyl server (dùng Java egg)
+2. Bấm **Start** — lần đầu sẽ hỏi chọn version BDS muốn cài
+3. Các lần sau tự động chạy, không cần thao tác
 
 ## Tính năng
 
-- **Auto-install BDS** — tự tải và cài đặt, không cần thao tác thủ công
-- **Auto-update** — tự cập nhật khi có phiên bản mới
-- **MCXboxBroadcast** — tự tải Xbox Live integration
-- **Tailscale** — VPN networking tùy chọn
-- **World Pack Sync** — tự tạo file pack JSON
-- **Console** — nhập lệnh trực tiếp từ panel
-- **Graceful Shutdown** — stop đúng cách, không crash
+- Zero dependencies — JAR chỉ **59 KB**, không cần thêm thư viện
+- Auto-install BDS + auto-update
+- MCXboxBroadcast tích hợp Xbox Live
+- Tailscale VPN tùy chọn
+- World Pack Sync (đồng bộ behavior/resource packs)
+- Graceful Shutdown (stop BDS đúng cách, không crash)
 
-## Cấu trúc thư mục
+## Cấu trúc
 
 ```
 /home/container/
 ├── BDSLauncher.jar
 └── data/
-    ├── install.json
+    ├── config.txt            ← Cấu hình (INI format)
     ├── bds/
     │   ├── bedrock_server
     │   ├── server.properties
@@ -41,50 +32,61 @@ Lần đầu BDSLauncher sẽ hỏi bạn chọn version BDS muốn cài. Từ l
         └── MCXboxBroadcast.jar
 ```
 
-## Cấu hình
+## Cấu hình (`data/config.txt`)
 
-Config nằm trong `data/install.json`:
+```ini
+launcherVersion = 1.0.0
+autoUpdate = true
 
-```json
-{
-  "autoUpdate": false,
-  "bds": {
-    "installed": false,
-    "version": null
-  },
-  "tailscale": {
-    "enabled": false,
-    "authKey": null
-  }
-}
+[bds]
+installed = true
+version = 1.26.34
+
+[mcxboxbroadcast]
+installed = true
+version = latest
+
+[tailscale]
+enabled = false
+version = 1.101.162
+authKey =
+
+[cleanup]
+deleteMCXboxBroadcastLog = true
 ```
 
-| Field | Mô tả |
-|-------|-------|
+| Key | Mô tả |
+|-----|-------|
 | `autoUpdate` | Tự cập nhật BDS khi có bản mới |
-| `tailscale.enabled` | Bật Tailscale VPN |
+| `tailscale.enabled` | Bật/tắt Tailscale VPN |
 | `tailscale.authKey` | Auth key (để trống nếu login interactive) |
+| `cleanup.deleteMCXboxBroadcastLog` | Xoá log MCXbox sau khi tắt |
 
 ## Flow
 
 ```
 Main.main()
-├─ EnvironmentCheck       Kiểm tra Java 21+, Linux, disk
-├─ InstallStateManager    Load install.json
-├─ TailscaleManager       Setup VPN (nếu enabled)
-├─ McxboxBroadcastManager Tải MCXboxBroadcast
-├─ BdsDownloadManager     Cài BDS nếu chưa có
-├─ UpdateManager          Kiểm tra cập nhật
-├─ WorldPackManager       Đồng bộ packs
-├─ ProcessManager         Start MCXbox → Start BDS
+├─ EnvironmentCheck        Kiểm tra Java 21+, Linux, disk
+├─ InstallStateManager     Đọc data/config.txt
+├─ TailscaleManager        Setup VPN (nếu enabled)
+├─ McxboxBroadcastManager  Tải MCXboxBroadcast
+├─ BdsDownloadManager      Cài BDS nếu chưa có
+├─ UpdateManager           Kiểm tra cập nhật
+├─ WorldPackManager        Đồng bộ packs
+├─ ProcessManager          Start MCXbox → Start BDS
+└─ Shutdown Hook           Stop BDS → Stop MCXbox → Stop Tailscale
 ```
 
 ## Build
 
 ```bash
-mvn clean package
+export JAVA_HOME=.tools/jdk-21.0.4
+export PATH="$JAVA_HOME/bin:.tools/apache-maven-3.9.6/bin:$PATH"
+mvn clean package -q
 cp target/BDSLauncher-1.0.0.jar BDSLauncher.jar
 ```
+
+Không cần shade plugin — không có dependency ngoài.
 
 ## License
 
