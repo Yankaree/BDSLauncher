@@ -10,6 +10,9 @@
 - **BdsDownloadManager**: Fix zip cache files not being cleaned up after extraction
 - **WorldPackManager**: Fix `\r\n` line endings not being handled in server.properties parsing
 
+### Config
+- **Migrated config from JSON to INI format**: Replaced `install.json` with `config.txt` — human-readable section-based key=value format
+
 ### Performance
 - **Dependency reduction**: Replaced `commons-compress` 1.26.2 (~1.5 MB) with built-in `java.util.zip`
 - **Zero external dependencies**: Removed Jackson databind 2.17.1 (~2.3 MB), replaced with custom lightweight `Json.java` parser

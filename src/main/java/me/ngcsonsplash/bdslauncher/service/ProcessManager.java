@@ -62,7 +62,7 @@ public class ProcessManager {
 
         if (!java.nio.file.Files.exists(bdsBinary)) {
             Printer.printError("bedrock_server not found in data/bds/");
-            Printer.printInfo("Tip", "Delete data/install.json and re-run to reinstall BDS");
+            Printer.printInfo("Tip", "Delete data/config.txt and re-run to reinstall BDS");
             return;
         }
 

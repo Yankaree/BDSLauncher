@@ -71,7 +71,7 @@ public class TailscaleManager {
         Printer.printInfo("Tailscale", "Checking binaries...");
 
         if (expectedVersion == null || expectedVersion.isEmpty()) {
-            throw new RuntimeException("Tailscale version not configured in install.json");
+            throw new RuntimeException("Tailscale version not configured in config.txt");
         }
 
         if (Files.exists(TAILSCALED) && Files.exists(TAILSCALE_BIN)) {
